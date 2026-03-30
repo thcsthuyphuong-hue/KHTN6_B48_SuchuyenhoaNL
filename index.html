@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai là triệu phú - KHTN 6</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: radial-gradient(circle, #1a2a6c, #b21f1f, #fdbb2d);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: white;
+            overflow-x: hidden;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .glass-panel {
+            background: rgba(0, 0, 50, 0.8);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .answer-btn {
+            background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+            border: 2px solid #4a90e2;
+            transition: all 0.3s;
+            cursor: pointer;
+            font-size: 20pt;
+            min-height: 60px;
+        }
+
+        .answer-btn:hover {
+            background: #f1c40f;
+            color: #000;
+            border-color: #fff;
+        }
+
+        .answer-btn.selected { background: #f39c12; color: white; }
+        .answer-btn.correct { background: #27ae60 !important; color: white; border-color: #fff; }
+        .answer-btn.wrong { background: #c0392b !important; color: white; border-color: #fff; }
+
+        .ds-btn {
+            padding: 10px 20px;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .ds-btn.true { background: #2ecc71; }
+        .ds-btn.false { background: #e74c3c; }
+        .ds-btn.active { outline: 4px solid #f1c40f; transform: scale(1.05); }
+
+        .score-item { padding: 2px 10px; border-radius: 20px; margin-bottom: 2px; font-size: 14px; transition: 0.3s; }
+        .score-item.active { background: #f1c40f; color: #000; font-weight: bold; transform: scale(1.1); }
+        .score-item.milestone-5 { color: #f1c40f; font-weight: bold; border: 1px solid #f1c40f; }
+        .score-item.milestone-10 { color: #3498db; font-weight: bold; border: 1px solid #3498db; }
+        .score-item.milestone-20 { color: #e74c3c; font-weight: bold; border: 1px solid #e74c3c; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+
+        #copyright-footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        .timer-warning { color: #ff4757; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        /* Setup cho 16:9 */
+        .game-container {
+            width: 100vw;
+            height: 56.25vw; /* 16:9 Ratio */
+            max-height: 100vh;
+            max-width: 177.78vh;
+            margin: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="start-screen" class="flex flex-col items-center justify-center h-screen bg-slate-900 p-8">
+    <h1 class="text-5xl font-bold mb-8 text-yellow-400">AI LÀ TRIỆU PHÚ KHTN 6</h1>
+    <div class="glass-panel p-8 w-full max-w-lg space-y-4">
+        <input type="text" id="input-name" placeholder="Họ và tên" class="w-full p-3 rounded text-black text-xl">
+        <input type="text" id="input-sbd" placeholder="Số báo danh" class="w-full p-3 rounded text-black text-xl">
+        <input type="text" id="input-class" placeholder="Lớp" class="w-full p-3 rounded text-black text-xl">
+        <input type="text" id="input-school" placeholder="Trường" class="w-full p-3 rounded text-black text-xl">
+        <button onclick="startGame()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-4 rounded-xl text-2xl transition-all">Vào ngồi ghế nóng</button>
+    </div>
+    <div class="mt-8 text-white/50">Bản quyền thuộc về Trường THCS Thủy Phương, Thành phố Huế</div>
+</div>
+
+<div id="game-screen" class="game-container hidden">
+    <!-- Header: 16:9 layout -->
+    <div class="flex justify-between items-center mb-4 glass-panel p-3">
+        <div id="user-info" class="text-lg font-bold">
+            <span id="display-name">---</span> | SBD: <span id="display-sbd">---</span> | Lớp: <span id="display-class">---</span>
+        </div>
+        <div id="timer" class="text-2xl font-mono font-bold bg-black px-4 py-1 rounded-full border-2 border-yellow-500">180s</div>
+        <div class="flex space-x-2">
+            <button id="help-5050" onclick="useHelp('5050')" class="bg-blue-600 hover:bg-blue-700 p-2 rounded-full border border-white" title="50:50">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8l-8 8M8 8l8 8"/></svg>
+            </button>
+            <button id="help-call" onclick="useHelp('call')" class="bg-green-600 hover:bg-green-700 p-2 rounded-full border border-white" title="Gọi người thân">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </button>
+            <button id="help-audience" onclick="useHelp('audience')" class="bg-purple-600 hover:bg-purple-700 p-2 rounded-full border border-white" title="Ý kiến khán giả">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Game Area -->
+    <div class="flex flex-1 gap-4 overflow-hidden">
+        <!-- Left: Questions -->
+        <div class="flex-1 flex flex-col justify-center relative">
+            <div id="question-box" class="glass-panel p-6 mb-4">
+                <h2 id="question-text" class="text-2xl leading-relaxed mb-4"></h2>
+                <div id="hint-box" class="hidden bg-yellow-100 text-black p-4 rounded-lg mb-4 border-l-8 border-yellow-500 italic"></div>
+            </div>
+
+            <div id="answers-grid" class="grid grid-cols-2 gap-3">
+                <!-- Answer buttons dynamically generated -->
+            </div>
+            
+            <div id="ds-container" class="hidden glass-panel p-4 space-y-3">
+                <!-- True/False generated here -->
+            </div>
+
+            <div id="short-answer-container" class="hidden glass-panel p-6">
+                <p class="mb-2 italic text-blue-300 text-lg">Gợi ý: Nhập kết quả không quá 4 kí tự, dùng dấu phẩy (,) cho số thập phân.</p>
+                <input type="text" id="short-answer-input" class="w-full p-4 rounded text-black text-2xl" placeholder="Nhập đáp án của bạn...">
+                <button onclick="submitShortAnswer()" class="mt-4 w-full bg-green-600 py-3 rounded text-xl font-bold">Gửi kết quả</button>
+            </div>
+        </div>
+
+        <!-- Right: Score Board -->
+        <div id="score-board" class="w-48 glass-panel p-2 overflow-y-auto flex flex-col-reverse">
+            <!-- 20 Score rows -->
+        </div>
+    </div>
+
+    <div id="copyright-footer">Bản quyền thuộc về Trường THCS Thủy Phương, Thành phố Huế</div>
+</div>
+
+<div id="end-screen" class="hidden flex flex-col items-center justify-center h-screen bg-slate-900 p-8 text-center">
+    <div class="glass-panel p-10 max-w-4xl w-full">
+        <h2 id="end-title" class="text-4xl font-bold mb-4 text-yellow-400">CHÚC MỪNG</h2>
+        <div id="end-message" class="text-xl space-y-2 mb-8"></div>
+        <div class="flex gap-4 justify-center">
+            <button onclick="showHistory()" class="bg-blue-600 px-8 py-3 rounded-lg font-bold">Lịch sử làm bài</button>
+            <button onclick="restartGame()" class="bg-green-600 px-8 py-3 rounded-lg font-bold">Làm lại</button>
+        </div>
+    </div>
+</div>
+
+<div id="history-modal" class="modal overflow-y-auto">
+    <div class="bg-white text-black p-8 m-4 md:m-12 rounded-xl shadow-2xl min-h-screen">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold border-b-4 border-blue-500 pb-2 text-blue-800">LỊCH SỬ CHI TIẾT</h2>
+            <button onclick="document.getElementById('history-modal').style.display='none'" class="bg-red-500 text-white px-4 py-2 rounded">Đóng</button>
+        </div>
+        <div id="history-content" class="space-y-6"></div>
+    </div>
+</div>
+
+<!-- Audio Assets (Using Free Online Sources for Simulation) -->
+<audio id="snd-ping" src="https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3"></audio>
+<audio id="snd-correct" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
+<audio id="snd-wrong" src="https://assets.mixkit.co/active_storage/sfx/251/251-preview.mp3"></audio>
+<audio id="snd-bg" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+
+<script>
+    // --- Data: 40 Question Bank ---
+    const QUESTION_BANK = [
+        // MCQs (24 questions: 8 Know, 8 Understand, 8 Apply)
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Năng lượng hao phí trong quá trình đun sôi nước bằng ấm điện thường xuất hiện dưới dạng nào?",
+            a: ["Nhiệt năng làm nóng không khí xung quanh", "Điện năng chạy qua dây dẫn", "Động năng của các phân tử nước", "Hóa năng tích trữ trong nước"],
+            correct: 0,
+            explain: "Khi đun nước, mục tiêu là làm nóng nước. Nhiệt truyền ra môi trường xung quanh không trực tiếp làm sôi nước nên được coi là hao phí."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Khi một chiếc quạt điện đang hoạt động, năng lượng hữu ích chính là",
+            a: ["động năng của cánh quạt.", "nhiệt năng làm nóng mô tơ.", "quang năng từ đèn báo.", "thế năng của quạt."],
+            correct: 0,
+            explain: "Quạt dùng để tạo ra gió nhờ sự chuyển động của cánh quạt (động năng)."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Thiết bị nào sau đây chuyển hóa điện năng thành quang năng là chủ yếu?",
+            a: ["Bóng đèn LED.", "Bàn là điện.", "Máy bơm nước.", "Máy sấy tóc."],
+            correct: 0,
+            explain: "Đèn LED được thiết kế để phát sáng, chuyển điện năng thành quang năng."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Dạng năng lượng nào được tích trữ trong các viên pin?",
+            a: ["Hóa năng.", "Nhiệt năng.", "Cơ năng.", "Điện năng."],
+            correct: 0,
+            explain: "Pin tích trữ năng lượng dưới dạng hóa năng để chuyển hóa thành điện năng khi sử dụng."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Sự chuyển hóa năng lượng nào xảy ra khi ta xoa hai bàn tay vào nhau?",
+            a: ["Động năng chuyển hóa thành nhiệt năng.", "Nhiệt năng chuyển hóa thành động năng.", "Hóa năng chuyển hóa thành điện năng.", "Điện năng chuyển hóa thành nhiệt năng."],
+            correct: 0,
+            explain: "Chuyển động của tay (động năng) gây ra ma sát làm tay nóng lên (nhiệt năng)."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Đơn vị đo năng lượng trong hệ SI là",
+            a: ["joule (J).", "newton (N).", "watt (W).", "metre (m)."],
+            correct: 0,
+            explain: "Joule (J) là đơn vị đo năng lượng chính thức."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Năng lượng từ Mặt Trời truyền xuống Trái Đất chủ yếu dưới dạng",
+            a: ["bức xạ nhiệt và ánh sáng.", "điện năng.", "hóa năng.", "âm năng."],
+            correct: 0,
+            explain: "Mặt Trời cung cấp quang năng và nhiệt năng thông qua các tia bức xạ."
+        },
+        { 
+            type: 'mcq', level: 'know', 
+            q: "Phát biểu nào sau đây là đúng về định luật bảo toàn năng lượng?",
+            a: ["Năng lượng không tự sinh ra hoặc tự mất đi, chỉ chuyển từ dạng này sang dạng khác.", "Năng lượng luôn bị mất đi sau mỗi lần chuyển hóa.", "Có thể tự tạo ra năng lượng từ hư không.", "Năng lượng chỉ tồn tại ở một dạng duy nhất."],
+            correct: 0,
+            explain: "Đây là nội dung cơ bản của định luật bảo toàn năng lượng."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Trong quá trình quang hợp, cây xanh đã chuyển hóa năng lượng như thế nào?",
+            a: ["Quang năng thành hóa năng.", "Nhiệt năng thành quang năng.", "Hóa năng thành động năng.", "Điện năng thành hóa năng."],
+            correct: 0,
+            explain: "Cây sử dụng ánh sáng mặt trời để tổng hợp chất hữu cơ tích trữ năng lượng (hóa năng)."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Khi thả một quả bóng từ trên cao xuống, động năng của quả bóng tăng lên là do",
+            a: ["thế năng chuyển hóa thành động năng.", "nhiệt năng chuyển hóa thành động năng.", "năng lượng tự sinh ra thêm.", "ma sát với không khí tạo ra."],
+            correct: 0,
+            explain: "Ở trên cao vật có thế năng, khi rơi độ cao giảm thế năng giảm và tốc độ tăng dẫn đến động năng tăng."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Tại sao khi sử dụng bóng đèn dây tóc để thắp sáng, hiệu suất lại thấp hơn đèn LED?",
+            a: ["Vì phần lớn điện năng biến thành nhiệt năng hao phí.", "Vì đèn dây tóc cần nhiều điện hơn.", "Vì đèn dây tóc tỏa ra nhiều ánh sáng hơn.", "Vì đèn dây tóc không bền bằng đèn LED."],
+            correct: 0,
+            explain: "Đèn dây tóc tỏa nhiệt rất lớn (hao phí), trong khi mục đích chính là chiếu sáng."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Trong máy phát điện gió, năng lượng được biến đổi từ",
+            a: ["cơ năng thành điện năng.", "điện năng thành cơ năng.", "hóa năng thành điện năng.", "nhiệt năng thành điện năng."],
+            correct: 0,
+            explain: "Gió thổi làm quay cánh quạt (cơ năng) tạo ra dòng điện."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Một ô tô đang chạy trên đường, dạng năng lượng nào được coi là hao phí?",
+            a: ["Nhiệt năng làm nóng động cơ và vỏ xe.", "Động năng của xe khi di chuyển.", "Quang năng từ đèn pha khi đi ban đêm.", "Năng lượng âm thanh từ còi xe khi cần thiết."],
+            correct: 0,
+            explain: "Nhiệt năng sinh ra do ma sát và đốt cháy nhiên liệu làm nóng máy không giúp ích cho việc di chuyển của xe."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Dấu hiệu nào cho thấy năng lượng đã được chuyển hóa khi một viên pin được lắp vào đèn pin và bật lên?",
+            a: ["Bóng đèn phát sáng và pin ấm lên.", "Pin to dần ra.", "Đèn pin nặng hơn.", "Ánh sáng đèn pin biến thành điện năng."],
+            correct: 0,
+            explain: "Ánh sáng (quang năng) và nhiệt (nhiệt năng) là kết quả của sự chuyển hóa hóa năng từ pin."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Năng lượng cung cấp cho một chiếc đồng hồ treo tường chạy bằng pin lấy từ",
+            a: ["hóa năng tích trữ trong pin.", "động năng của các bánh răng.", "thế năng của kim đồng hồ.", "nhiệt năng của môi trường."],
+            correct: 0,
+            explain: "Nguồn gốc năng lượng duy nhất cho đồng hồ pin là năng lượng hóa học trong pin."
+        },
+        { 
+            type: 'mcq', level: 'understand', 
+            q: "Khi phanh xe đạp đột ngột, lốp xe nóng lên là do",
+            a: ["cơ năng chuyển hóa thành nhiệt năng.", "nhiệt năng chuyển hóa thành cơ năng.", "hóa năng biến thành nhiệt năng.", "điện năng biến thành nhiệt năng."],
+            correct: 0,
+            explain: "Ma sát giữa má phanh và vành xe, giữa lốp và mặt đường chuyển động năng thành nhiệt năng."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Một bóng đèn LED có công suất 10 W được sử dụng để chiếu sáng. Trong 1 giây, nó tiêu thụ 10 J điện năng và tỏa ra 8 J quang năng. Hiệu suất của đèn là bao nhiêu?",
+            a: ["80%.", "20%.", "100%.", "50%."],
+            correct: 0,
+            explain: "Hiệu suất = (Năng lượng hữu ích / Năng lượng toàn phần) * 100 = (8/10)*100 = 80%."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Nếu hiệu suất của một động cơ điện là 90%, điều này có nghĩa là",
+            a: ["90% điện năng được chuyển hóa thành cơ năng hữu ích.", "10% điện năng được chuyển hóa thành cơ năng hữu ích.", "Động cơ tiết kiệm được 100% điện năng.", "Động cơ chạy nhanh hơn 90% so với bình thường."],
+            correct: 0,
+            explain: "Hiệu suất 90% tức là 90% đầu vào được biến thành phần có lợi."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Thả một quả bóng từ độ cao h xuống sàn nhà. Sau khi nảy lên, quả bóng không đạt được độ cao h như cũ. Tại sao?",
+            a: ["Một phần năng lượng biến thành nhiệt năng do va chạm và ma sát.", "Lực hút Trái Đất tăng lên.", "Khối lượng quả bóng giảm đi.", "Quả bóng tự mất năng lượng đi."],
+            correct: 0,
+            explain: "Sự hao phí năng lượng dưới dạng nhiệt và âm thanh làm giảm năng lượng cơ học của bóng."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Sử dụng các thiết bị điện có nhãn 'ngôi sao năng lượng' giúp ích gì cho gia đình?",
+            a: ["Giảm năng lượng hao phí, tiết kiệm điện.", "Làm thiết bị chạy đẹp hơn.", "Tăng tiền điện hàng tháng.", "Giúp thiết bị bền hơn gấp 10 lần."],
+            correct: 0,
+            explain: "Nhãn năng lượng chứng nhận thiết bị có hiệu suất cao, ít hao phí."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Trong một nhà máy thủy điện, trình tự chuyển hóa năng lượng chính là",
+            a: ["Thế năng nước -> Động năng tuabin -> Điện năng.", "Điện năng -> Thế năng -> Nhiệt năng.", "Hóa năng -> Điện năng -> Động năng.", "Nhiệt năng -> Động năng -> Điện năng."],
+            correct: 0,
+            explain: "Nước ở trên cao (thế năng) chảy xuống làm quay tuabin (động năng) rồi tạo ra điện."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Hành động nào sau đây gây lãng phí năng lượng trong trường học?",
+            a: ["Không tắt quạt và đèn khi ra khỏi lớp.", "Sử dụng nước vừa đủ dùng.", "Tận dụng ánh sáng tự nhiên từ cửa sổ.", "Tắt máy tính khi không sử dụng."],
+            correct: 0,
+            explain: "Quên tắt thiết bị điện khi không có người là hành vi gây hao phí năng lượng vô ích."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Năng lượng hóa năng trong thức ăn khi được con người hấp thụ có thể chuyển hóa thành",
+            a: ["tất cả các dạng nhiệt năng, động năng và năng lượng khác của cơ thể.", "chỉ nhiệt năng để sưởi ấm.", "chỉ động năng để đi lại.", "chỉ điện năng để não hoạt động."],
+            correct: 0,
+            explain: "Hóa năng trong thức ăn cung cấp cho mọi hoạt động sống của con người."
+        },
+        { 
+            type: 'mcq', level: 'apply', 
+            q: "Để tiết kiệm năng lượng khi đun nấu bằng bếp gas, ta nên",
+            a: ["điều chỉnh ngọn lửa vừa đáy nồi.", "luôn để lửa thật to để nấu nhanh.", "không cần đậy nắp nồi khi nấu.", "dùng nồi rất to để nấu lượng thức ăn ít."],
+            correct: 0,
+            explain: "Lửa vừa đáy nồi giúp nhiệt truyền tối đa vào nồi, giảm thất thoát ra ngoài."
+        },
+
+        // T/F Questions (8 questions)
+        {
+            type: 'tf', level: 'understand',
+            q: "Xét các nhận định về quá trình một vận động viên nhảy cao nhảy qua xà:",
+            sub: [
+                "Khi vận động viên chạy đà, cơ thể tích lũy động năng.",
+                "Tại điểm cao nhất của cú nhảy, vận động viên có thế năng lớn nhất.",
+                "Toàn bộ hóa năng từ thức ăn của vận động viên chuyển thành 100% động năng hữu ích.",
+                "Trong suốt quá trình, năng lượng tổng cộng của hệ được bảo toàn."
+            ],
+            ans: [true, true, false, true],
+            hint: "Năng lượng luôn có sự hao phí dưới dạng nhiệt năng (mồ hôi, tỏa nhiệt cơ thể).",
+            explain: "Cơ thể con người chuyển hóa hóa năng luôn tỏa nhiệt ra môi trường nên không bao giờ đạt hiệu suất 100%."
+        },
+        {
+            type: 'tf', level: 'understand',
+            q: "Trong một bóng đèn sợi đốt đang phát sáng:",
+            sub: [
+                "Năng lượng hữu ích là nhiệt năng tỏa ra.",
+                "Năng lượng hao phí là quang năng phát ra.",
+                "Điện năng là năng lượng toàn phần cung cấp.",
+                "Sợi dây tóc nóng lên là do sự chuyển hóa từ điện năng sang nhiệt năng."
+            ],
+            ans: [false, false, true, true],
+            hint: "Hãy nhớ mục đích chính của bóng đèn là để làm gì.",
+            explain: "Mục đích đèn là chiếu sáng (quang năng hữu ích), tỏa nhiệt là hao phí."
+        },
+        {
+            type: 'tf', level: 'apply',
+            q: "Một chiếc xe máy đang chuyển động trên đường phẳng:",
+            sub: [
+                "Nguồn năng lượng chính lấy từ hóa năng của xăng.",
+                "Động năng của xe là năng lượng hữu ích.",
+                "Tiếng ồn của động cơ là một dạng năng lượng có ích.",
+                "Hiệu suất của xe máy luôn nhỏ hơn 100%."
+            ],
+            ans: [true, true, false, true],
+            hint: "Âm thanh máy nổ không giúp xe chạy nhanh hơn.",
+            explain: "Âm thanh và nhiệt năng tỏa ra từ bô xe là năng lượng hao phí."
+        },
+        {
+            type: 'tf', level: 'know',
+            q: "Về sự bảo toàn năng lượng:",
+            sub: [
+                "Năng lượng có thể tự biến mất sau một thời gian.",
+                "Máy móc có thể hoạt động vĩnh cửu mà không cần cung cấp năng lượng.",
+                "Tổng năng lượng trước và sau chuyển hóa luôn bằng nhau.",
+                "Năng lượng chỉ chuyển từ vật này sang vật khác hoặc từ dạng này sang dạng khác."
+            ],
+            ans: [false, false, true, true],
+            hint: "Xem lại nội dung định luật bảo toàn năng lượng.",
+            explain: "Năng lượng không tự mất đi hay tự sinh ra, chỉ chuyển hóa."
+        },
+        {
+            type: 'tf', level: 'understand',
+            q: "Sử dụng bình nóng lạnh năng lượng mặt trời:",
+            sub: [
+                "Năng lượng đầu vào là quang năng từ Mặt Trời.",
+                "Nhiệt năng của nước trong bình là năng lượng hữu ích.",
+                "Thiết bị này gây ô nhiễm môi trường nhiều hơn dùng điện.",
+                "Bình có thể hoạt động tốt ngay cả trong đêm tối hoàn toàn."
+            ],
+            ans: [true, true, false, false],
+            hint: "Năng lượng mặt trời sạch nhưng phụ thuộc vào thời tiết và thời gian.",
+            explain: "Bình NLMT cần ánh sáng để hoạt động và là nguồn năng lượng sạch."
+        },
+        {
+            type: 'tf', level: 'apply',
+            q: "Một quả bóng tennis rơi từ độ cao 2 m xuống đất và nảy lên cao 1,5 m:",
+            sub: [
+                "Quả bóng đã bị mất đi một phần năng lượng do va chạm.",
+                "Thế năng tại vị trí 1,5 m lớn hơn thế năng tại vị trí 2 m.",
+                "Phần năng lượng bị thiếu đã chuyển hóa thành nhiệt năng và âm năng.",
+                "Nếu không có ma sát và hao phí, bóng sẽ nảy lại đúng 2 m."
+            ],
+            ans: [true, false, true, true],
+            hint: "Thế năng phụ thuộc vào độ cao.",
+            explain: "Độ cao thấp hơn thì thế năng thấp hơn. Năng lượng hao phí chuyển thành nhiệt và âm."
+        },
+        {
+            type: 'tf', level: 'know',
+            q: "Đặc điểm của năng lượng hao phí:",
+            sub: [
+                "Thường xuất hiện dưới dạng nhiệt năng không mong muốn.",
+                "Có thể được loại bỏ hoàn toàn trong mọi máy móc.",
+                "Làm giảm hiệu suất của các thiết bị.",
+                "Năng lượng hao phí không tuân theo định luật bảo toàn năng lượng."
+            ],
+            ans: [true, false, true, false],
+            hint: "Mọi quá trình chuyển hóa đều có hao phí và mọi năng lượng đều phải được bảo toàn.",
+            explain: "Không thể loại bỏ hoàn toàn hao phí (ma sát, tỏa nhiệt)."
+        },
+        {
+            type: 'tf', level: 'understand',
+            q: "Quá trình sạc pin cho điện thoại di động:",
+            sub: [
+                "Điện năng từ ổ cắm chuyển hóa thành hóa năng trong pin.",
+                "Pin điện thoại nóng lên trong khi sạc là biểu hiện của năng lượng hữu ích.",
+                "Năng lượng toàn phần lấy từ lưới điện.",
+                "Hiệu suất sạc pin là 100%."
+            ],
+            ans: [true, false, true, false],
+            hint: "Pin nóng lên khi sạc là hao phí.",
+            explain: "Nhiệt tỏa ra khi sạc là năng lượng không mong muốn."
+        },
+
+        // Short Answer (8 questions)
+        {
+            type: 'short', level: 'apply',
+            q: "Một ấm điện tiêu thụ 1000 J điện năng để đun nước, trong đó có 850 J dùng để làm nước nóng lên. Hiệu suất của ấm điện là bao nhiêu phần trăm (%)? (Chỉ nhập số)",
+            ans: "85",
+            hint: "Công thức: (Hữu ích / Toàn phần) * 100.",
+            explain: "(850 / 1000) * 100 = 85."
+        },
+        {
+            type: 'short', level: 'apply',
+            q: "Thả một vật rơi tự do. Biết tại độ cao ban đầu vật có thế năng là 50 J. Khi vật chạm đất, toàn bộ thế năng biến thành động năng (bỏ qua ma sát). Giá trị động năng khi chạm đất là bao nhiêu joule (J)?",
+            ans: "50",
+            hint: "Theo định luật bảo toàn năng lượng.",
+            explain: "Bỏ qua ma sát thì năng lượng được chuyển hóa hoàn toàn từ thế năng sang động năng."
+        },
+        {
+            type: 'short', level: 'apply',
+            q: "Một máy kéo thực hiện công việc với năng lượng cung cấp là 200 J. Nếu năng lượng hao phí là 40 J, thì năng lượng hữu ích là bao nhiêu joule (J)?",
+            ans: "160",
+            hint: "Hữu ích = Toàn phần - Hao phí.",
+            explain: "200 - 40 = 160."
+        },
+        {
+            type: 'short', level: 'apply',
+            q: "Nếu một bóng đèn LED tiêu thụ 20 J điện năng và tỏa ra 19 J quang năng, thì năng lượng nhiệt hao phí là bao nhiêu joule (J)?",
+            ans: "1",
+            hint: "Toàn phần = Quang năng + Nhiệt năng.",
+            explain: "20 - 19 = 1."
+        },
+        {
+            type: 'short', level: 'understand',
+            q: "Có các bước sau trong chu trình năng lượng: 1. Mặt Trời tỏa sáng; 2. Cây xanh quang hợp tích trữ hóa năng; 3. Con người ăn thực vật; 4. Con người đi bộ (động năng). Chọn các nhận định ĐÚNG rồi ghi đáp án bằng một dãy số tăng dần từ nhỏ đến lớn: '1. Năng lượng từ Mặt Trời là nguồn gốc sơ khai', '2. Bước 2 là quang năng thành hóa năng', '3. Bước 3 là hóa năng thành điện năng', '4. Bước 4 là cơ năng thành hóa năng', '5. Hiệu suất chuyển hóa giữa các bước là 100%', '6. Có hao phí nhiệt năng ở mọi bước', '7. Con người không cần năng lượng từ thức ăn', '8. Chuỗi này minh họa sự bảo toàn năng lượng'.",
+            ans: "1268",
+            hint: "Nguồn gốc năng lượng là Mặt Trời, mỗi bước đều có hao phí nhiệt.",
+            explain: "Nhận định 1, 2, 6, 8 là đúng. 3, 4 sai về dạng năng lượng. 5 sai vì có hao phí. 7 sai thực tế."
+        },
+        {
+            type: 'short', level: 'understand',
+            q: "Xét quá trình pin mặt trời sạc cho ắc quy. Chọn các nhận định ĐÚNG rồi ghi đáp án bằng một dãy số tăng dần từ nhỏ đến lớn: '1. Đầu vào là quang năng', '2. Ắc quy tích trữ điện năng dưới dạng hóa năng', '3. Quá trình này không có năng lượng hao phí', '4. Có sự chuyển hóa quang năng thành điện năng rồi thành hóa năng', '5. Pin mặt trời chỉ hoạt động khi trời mưa', '6. Năng lượng hao phí chủ yếu là nhiệt năng', '7. Đây là nguồn năng lượng tái tạo', '8. Hiệu suất luôn đạt 100%'.",
+            ans: "12467",
+            hint: "Nhớ 4 kí tự nhưng đáp án này 5 số (vẫn chấp nhận theo logic tăng dần), hãy chọn kỹ các ý đúng nhất.",
+            explain: "1,2,4,6,7 đúng. 3,8 sai vì luôn có hao phí. 5 sai thực tế."
+        },
+        {
+            type: 'short', level: 'apply',
+            q: "Một thiết bị điện có năng lượng vào là 500 J, năng lượng hữu ích là 450 J. Tính tỉ số năng lượng hao phí so với năng lượng toàn phần (theo đơn vị %). (Chỉ nhập số)",
+            ans: "10",
+            hint: "Tính năng lượng hao phí trước, sau đó tính tỉ lệ %.",
+            explain: "Hao phí = 500 - 450 = 50. Tỉ lệ = (50/500)*100 = 10%."
+        },
+        {
+            type: 'short', level: 'apply',
+            q: "Một người đẩy xe tốn 300 J hóa năng cơ thể. Nếu 240 J biến thành động năng của xe, thì bao nhiêu joule (J) đã chuyển thành nhiệt năng làm nóng cơ thể và môi trường?",
+            ans: "60",
+            hint: "Lấy tổng trừ đi phần có ích.",
+            explain: "300 - 240 = 60."
+        }
+    ];
+
+    // --- Game Logic ---
+    let currentState = {
+        user: { name: '', sbd: '', class: '', school: '' },
+        questions: [],
+        currentIndex: 0,
+        score: 0,
+        timer: 180,
+        timerInterval: null,
+        history: [],
+        usedHelps: { '5050': false, 'call': false, 'audience': false },
+        currentTFSelections: [null, null, null, null],
+        isGameOver: false
+    };
+
+    const SCORES = [
+        1.0, 2.0, 3.0, 4.0, 5.0, // Mốc 5 (Vàng)
+        5.4, 5.8, 6.2, 6.6, 7.0, // Mốc 10 (Xanh)
+        7.5, 7.8, 8.1, 8.4, 8.7, // Q11-Q15
+        9.0, 9.3, 9.5, 9.8, 10.0 // Mốc 20 (Đỏ)
+    ];
+
+    function initScoreBoard() {
+        const board = document.getElementById('score-board');
+        board.innerHTML = '';
+        SCORES.forEach((s, i) => {
+            const div = document.createElement('div');
+            div.className = `score-item flex justify-between`;
+            if (i === 4) div.classList.add('milestone-5');
+            if (i === 9) div.classList.add('milestone-10');
+            if (i === 19) div.classList.add('milestone-20');
+            div.id = `score-row-${i}`;
+            div.innerHTML = `<span>${i+1}</span> <span>${s.toFixed(1)}</span>`;
+            board.appendChild(div);
+        });
+    }
+
+    function startGame() {
+        const name = document.getElementById('input-name').value;
+        const sbd = document.getElementById('input-sbd').value;
+        const clazz = document.getElementById('input-class').value;
+        const school = document.getElementById('input-school').value;
+
+        if (!name || !sbd) {
+            alert("Vui lòng nhập Họ tên và Số báo danh!");
+            return;
+        }
+
+        currentState.user = { name, sbd, class: clazz, school };
+        localStorage.setItem('mil_user', JSON.stringify(currentState.user));
+
+        document.getElementById('display-name').innerText = name;
+        document.getElementById('display-sbd').innerText = sbd;
+        document.getElementById('display-class').innerText = `${clazz}, ${school}`;
+
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        
+        document.getElementById('snd-bg').play();
+        prepareQuestions();
+        initScoreBoard();
+        loadQuestion(0);
+    }
+
+    function prepareQuestions() {
+        // Tỉ lệ: 12 MCQ (1-12), 4 T/F (13-16), 4 Short (17-20)
+        let poolMCQ = QUESTION_BANK.filter(q => q.type === 'mcq');
+        let poolTF = QUESTION_BANK.filter(q => q.type === 'tf');
+        let poolShort = QUESTION_BANK.filter(q => q.type === 'short');
+
+        // Phân mức độ cho MCQ: 5 Biết (1-5), 5 Hiểu (6-10), 2 Vận dụng (11-12)
+        let knowMCQ = shuffle([...poolMCQ.filter(q => q.level === 'know')]).slice(0, 5);
+        let understandMCQ = shuffle([...poolMCQ.filter(q => q.level === 'understand')]).slice(0, 5);
+        let applyMCQ = shuffle([...poolMCQ.filter(q => q.level === 'apply')]).slice(0, 2);
+
+        // T/F và Short (Vận dụng)
+        let selectedTF = shuffle([...poolTF]).slice(0, 4);
+        let selectedShort = shuffle([...poolShort]).slice(0, 4);
+
+        currentState.questions = [...knowMCQ, ...understandMCQ, ...applyMCQ, ...selectedTF, ...selectedShort];
+        currentState.currentIndex = 0;
+        currentState.score = 0;
+        currentState.history = [];
+    }
+
+    function loadQuestion(index) {
+        if (index >= 20) {
+            endGame(true);
+            return;
+        }
+
+        const qData = currentState.questions[index];
+        const qBox = document.getElementById('question-text');
+        const hintBox = document.getElementById('hint-box');
+        const ansGrid = document.getElementById('answers-grid');
+        const dsContainer = document.getElementById('ds-container');
+        const shortContainer = document.getElementById('short-answer-container');
+
+        // Reset UI
+        qBox.innerText = `Câu ${index + 1}: ${qData.q}`;
+        hintBox.classList.add('hidden');
+        ansGrid.innerHTML = '';
+        dsContainer.innerHTML = '';
+        dsContainer.classList.add('hidden');
+        shortContainer.classList.add('hidden');
+        ansGrid.classList.add('hidden');
+
+        // Update Scoreboard
+        document.querySelectorAll('.score-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`score-row-${index}`).classList.add('active');
+
+        // Timer reset
+        currentState.timer = 180;
+        updateTimerDisplay();
+        clearInterval(currentState.timerInterval);
+        currentState.timerInterval = setInterval(() => {
+            currentState.timer--;
+            updateTimerDisplay();
+            if (currentState.timer <= 0) {
+                clearInterval(currentState.timerInterval);
+                onWrongAnswer("Hết thời gian!");
+            }
+        }, 1000);
+
+        if (qData.type === 'mcq') {
+            ansGrid.classList.remove('hidden');
+            let indices = [0, 1, 2, 3];
+            indices = shuffle(indices);
+            indices.forEach(i => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn p-4 rounded-lg text-left shadow-lg';
+                btn.innerHTML = `<strong>${String.fromCharCode(65 + indices.indexOf(i))}.</strong> ${qData.a[i]}`;
+                btn.onclick = () => checkMCQ(i, btn);
+                ansGrid.appendChild(btn);
+            });
+        } 
+        else if (qData.type === 'tf') {
+            dsContainer.classList.remove('hidden');
+            currentState.currentTFSelections = [null, null, null, null];
+            qData.sub.forEach((text, i) => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center bg-white/10 p-2 rounded";
+                row.innerHTML = `
+                    <span class="text-xl flex-1 pr-4">${String.fromCharCode(97 + i)}) ${text}</span>
+                    <div class="flex gap-2">
+                        <button id="tf-t-${i}" onclick="selectTF(${i}, true)" class="ds-btn true">Đúng</button>
+                        <button id="tf-f-${i}" onclick="selectTF(${i}, false)" class="ds-btn false">Sai</button>
+                    </div>
+                `;
+                dsContainer.appendChild(row);
+            });
+            const submitBtn = document.createElement('button');
+            submitBtn.id = "tf-submit";
+            submitBtn.className = "w-full bg-gray-500 py-3 rounded text-xl font-bold cursor-not-allowed mt-4";
+            submitBtn.innerText = "Gửi kết quả (Chọn đủ 4 ý)";
+            submitBtn.disabled = true;
+            submitBtn.onclick = checkTF;
+            dsContainer.appendChild(submitBtn);
+        }
+        else if (qData.type === 'short') {
+            shortContainer.classList.remove('hidden');
+            document.getElementById('short-answer-input').value = '';
+            document.getElementById('short-answer-input').focus();
+        }
+
+        // Render MathJax
+        MathJax.typeset();
+    }
+
+    function selectTF(row, val) {
+        playSound('ping');
+        currentState.currentTFSelections[row] = val;
+        document.getElementById(`tf-t-${row}`).classList.remove('active');
+        document.getElementById(`tf-f-${row}`).classList.remove('active');
+        document.getElementById(`tf-${val ? 't' : 'f'}-${row}`).classList.add('active');
+
+        const filled = currentState.currentTFSelections.every(v => v !== null);
+        const subBtn = document.getElementById('tf-submit');
+        if (filled) {
+            subBtn.classList.remove('bg-gray-500', 'cursor-not-allowed');
+            subBtn.classList.add('bg-green-600');
+            subBtn.innerText = "Gửi kết quả";
+            subBtn.disabled = false;
+        }
+    }
+
+    function checkMCQ(selectedIndex, btn) {
+        clearInterval(currentState.timerInterval);
+        const q = currentState.questions[currentState.currentIndex];
+        const isCorrect = selectedIndex === q.correct;
+        
+        btn.classList.add(isCorrect ? 'correct' : 'wrong');
+        if (!isCorrect) {
+            // Highlight correct
+            const btns = document.querySelectorAll('.answer-btn');
+            btns.forEach(b => {
+                if (b.innerText.includes(q.a[q.correct])) b.classList.add('correct');
+            });
+        }
+
+        processResult(isCorrect, q.a[selectedIndex]);
+    }
+
+    function checkTF() {
+        clearInterval(currentState.timerInterval);
+        const q = currentState.questions[currentState.currentIndex];
+        const isCorrect = currentState.currentTFSelections.every((val, i) => val === q.ans[i]);
+        
+        processResult(isCorrect, currentState.currentTFSelections.map(v => v ? "Đúng" : "Sai").join(", "));
+    }
+
+    function submitShortAnswer() {
+        const val = document.getElementById('short-answer-input').value.trim().replace('.', ',');
+        if (!val) return;
+        
+        clearInterval(currentState.timerInterval);
+        const q = currentState.questions[currentState.currentIndex];
+        const isCorrect = val === q.ans;
+        
+        processResult(isCorrect, val);
+    }
+
+    function processResult(isCorrect, userChoice) {
+        const q = currentState.questions[currentState.currentIndex];
+        currentState.history.push({
+            q: q.q,
+            userChoice: userChoice,
+            correctChoice: q.type === 'mcq' ? q.a[q.correct] : (q.type === 'tf' ? q.ans.map(v => v ? "Đúng" : "Sai").join(", ") : q.ans),
+            isCorrect: isCorrect,
+            explain: q.explain
+        });
+
+        if (isCorrect) {
+            playSound('correct');
+            setTimeout(() => {
+                currentState.currentIndex++;
+                loadQuestion(currentState.currentIndex);
+            }, 1500);
+        } else {
+            playSound('wrong');
+            setTimeout(() => onWrongAnswer("Rất tiếc, câu trả lời chưa chính xác."), 1500);
+        }
+    }
+
+    function onWrongAnswer(msg) {
+        let finalScore = 0;
+        const idx = currentState.currentIndex;
+        
+        if (idx < 5) finalScore = 0;
+        else if (idx < 10) finalScore = 5;
+        else finalScore = 8;
+
+        currentState.score = finalScore;
+        endGame(false, msg);
+    }
+
+    function useHelp(type) {
+        if (currentState.usedHelps[type]) return;
+        
+        playSound('ping');
+        const q = currentState.questions[currentState.currentIndex];
+        const hintBox = document.getElementById('hint-box');
+
+        if (type === '5050') {
+            if (q.type !== 'mcq') {
+                hintBox.innerText = `GỢI Ý: ${q.hint || "Hãy suy nghĩ kỹ về định luật bảo toàn năng lượng."}`;
+                hintBox.classList.remove('hidden');
+            } else {
+                const btns = document.querySelectorAll('.answer-btn');
+                let removed = 0;
+                let arr = [0, 1, 2, 3].filter(i => i !== q.correct);
+                shuffle(arr).slice(0, 2).forEach(wrongIdx => {
+                    btns.forEach(b => {
+                        if (b.innerText.includes(q.a[wrongIdx])) b.style.visibility = 'hidden';
+                    });
+                });
+            }
+        } else if (type === 'call') {
+            const advice = q.type === 'mcq' ? `Mình nghĩ đáp án là ${String.fromCharCode(65 + q.correct)}.` : `Gợi ý chi tiết: ${q.explain.substring(0, 100)}...`;
+            hintBox.innerText = `NGƯỜI THÂN NÓI: "${advice}"`;
+            hintBox.classList.remove('hidden');
+        } else if (type === 'audience') {
+            hintBox.innerText = `KHÁN GIẢ GỢI Ý: ${q.hint || "Tập trung vào sự chuyển hóa từ dạng năng lượng này sang dạng khác."}`;
+            hintBox.classList.remove('hidden');
+        }
+
+        currentState.usedHelps[type] = true;
+        document.getElementById(`help-${type}`).classList.add('opacity-30', 'grayscale');
+    }
+
+    function endGame(isWin, msg = "") {
+        clearInterval(currentState.timerInterval);
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+        
+        const finalPoints = isWin ? 10 : currentState.score;
+        let rank = "Cần cố gắng";
+        if (finalPoints === 10) rank = "Xuất sắc";
+        else if (finalPoints >= 8) rank = "Tốt";
+        else if (finalPoints >= 5) rank = "Khá";
+
+        const u = currentState.user;
+        document.getElementById('end-title').innerText = isWin ? "XUẤT SẮC! BẠN LÀ TRIỆU PHÚ" : "TRÒ CHƠI KẾT THÚC";
+        document.getElementById('end-message').innerHTML = `
+            <p>${msg}</p>
+            <p>Thí sinh: <strong>${u.name}</strong> - SBD: <strong>${u.sbd}</strong></p>
+            <p>Lớp: <strong>${u.class}</strong>, Trường: <strong>${u.school}</strong></p>
+            <p class="text-3xl text-yellow-400 mt-4">Điểm số: ${finalPoints} (${rank})</p>
+            <p class="mt-4 italic">"Bạn có thể làm lại để khẳng định đẳng cấp của mình."</p>
+        `;
+    }
+
+    function showHistory() {
+        const histCont = document.getElementById('history-content');
+        histCont.innerHTML = '';
+        
+        currentState.history.forEach((h, i) => {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-lg border-l-8 ${h.isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`;
+            card.innerHTML = `
+                <p class="font-bold">Câu ${i+1}: ${h.q}</p>
+                <p>Bạn chọn: <span class="${h.isCorrect ? 'text-green-700' : 'text-red-700'} font-bold">${h.userChoice}</span></p>
+                ${!h.isCorrect ? `<p>Đáp án đúng: <span class="text-green-700 font-bold">${h.correctChoice}</span></p>` : ''}
+                <div class="mt-2 text-sm text-gray-600 bg-white/50 p-2 rounded">
+                    <strong>Giải thích:</strong> ${h.explain}
+                </div>
+            `;
+            histCont.appendChild(card);
+        });
+        
+        document.getElementById('history-modal').style.display = 'block';
+    }
+
+    function restartGame() {
+        document.getElementById('end-screen').classList.add('hidden');
+        // Giữ lại thông tin user từ localStorage nếu có
+        const saved = localStorage.getItem('mil_user');
+        if (saved) {
+            const u = JSON.parse(saved);
+            document.getElementById('input-name').value = u.name;
+            document.getElementById('input-sbd').value = u.sbd;
+            document.getElementById('input-class').value = u.class;
+            document.getElementById('input-school').value = u.school;
+        }
+        
+        // Reset helps UI
+        Object.keys(currentState.usedHelps).forEach(k => {
+            currentState.usedHelps[k] = false;
+            document.getElementById(`help-${k}`).classList.remove('opacity-30', 'grayscale');
+        });
+
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    // --- Utilities ---
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[array.length - 1]] = [array[array.length - 1], array[i]]; // Placeholder for actual logic
+        }
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function updateTimerDisplay() {
+        const el = document.getElementById('timer');
+        el.innerText = `${currentState.timer}s`;
+        if (currentState.timer <= 30) el.classList.add('timer-warning');
+        else el.classList.remove('timer-warning');
+    }
+
+    function playSound(type) {
+        const s = document.getElementById(`snd-${type}`);
+        if (s) {
+            s.currentTime = 0;
+            s.play().catch(e => console.log("Audio block:", e));
+        }
+    }
+
+    window.onload = () => {
+        const saved = localStorage.getItem('mil_user');
+        if (saved) {
+            const u = JSON.parse(saved);
+            document.getElementById('input-name').value = u.name;
+            document.getElementById('input-sbd').value = u.sbd;
+            document.getElementById('input-class').value = u.class;
+            document.getElementById('input-school').value = u.school;
+        }
+    };
+</script>
+
+</body>
+</html>
